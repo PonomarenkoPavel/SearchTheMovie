@@ -32,7 +32,7 @@ function filmSearch() {
                 context.currentURL = `${context.baseUrl}&${nameParam}=${context.currentTitle}`;
                 console.log(context.currentURL)
                 context.getResultsFromServer(context.currentURL);
-            }, 3000);
+            }, 500);
         }
     }
     this.getResultsFromServer = function (URL) {
@@ -70,7 +70,7 @@ function filmSearch() {
                 context.movieOutput(json);
             }
         } else {
-            document.querySelector(".total-results").innerHTML = "По давнному запросу ничего не было найдено";
+            document.querySelector(".total-results").innerHTML = "По данному запросу ничего не было найдено";
         }
     }
     this.showClearButton = function () {
