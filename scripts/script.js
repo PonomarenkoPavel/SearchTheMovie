@@ -51,11 +51,11 @@ function filmSearch() {
         console.log(json);
         let anyFilms = document.querySelector(".any-films");
         if (anyFilms) anyFilms.remove();
+        let pagination = document.getElementById("pagination");
+        while (pagination.firstChild) pagination.firstChild.remove();
         if (json.Response != "False") {
             context.currentResult = json;
-            let pagination = document.getElementById("pagination");
             let ul = document.createElement("ul");
-            while (pagination.firstChild) pagination.firstChild.remove();
             pagination.appendChild(ul);
             context.createDivForMovies();
             if ("Search" in json) {
