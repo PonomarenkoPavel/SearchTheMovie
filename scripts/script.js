@@ -69,6 +69,8 @@ function filmSearch() {
                 context.createPagination(context.currentPage || 1, ul, 1);
                 context.movieOutput(json);
             }
+        } else {
+            document.querySelector(".total-results").innerHTML = "По давнному запросу ничего не было найдено";
         }
     }
     this.showClearButton = function () {
@@ -222,8 +224,15 @@ function filmSearch() {
         console.log(id);
         let URL = `${context.baseUrl}&i=${id}`;
         fetch(URL)
-            .then(request => request.json())
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(`Ошибка HTTP: ${response.status}`);
+                }
+            })
             .then(context.viewInfoAboutFilm)
+            .catch(error => console.log(error));
     }
     this.viewInfoAboutFilm = function (obj) {
         while (document.body.firstChild) document.body.firstChild.remove();
