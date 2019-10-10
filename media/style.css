@@ -20,13 +20,13 @@ body {
 
 .clear-search-line {
     position: absolute;
-    top: 8px;
+    top: 1px;
     right: 7px;
-    background: #fff url('https://img.icons8.com/material-outlined/24/fa314a/delete-sign.png') no-repeat center center;
+    background: #fff;
+    color: red;
+    font-size: 30px;
     box-shadow: none;
     border: none;
-    height: 26px;
-    width: 26px;
     opacity: 0.5;
 }
 
@@ -37,10 +37,6 @@ body {
 
 .button_hide {
     display: none;
-}
-
-.button_show {
-    display: block;
 }
 
 

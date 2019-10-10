@@ -11,23 +11,17 @@ function filmSearch() {
     this.timer = null;
     this.currentPage = null;
     this.currentTitle = "";
-    this.searchMovieByName = function () {
+    this.searchMovieByName = function (e) {
         console.log(context);
         context.currentTitle = "";
         context.currentPage = null;
         if (context.timer) clearTimeout(context.timer);
-        let filmOrSerialName = document.getElementById("search-film").value.trim().toLowerCase();
+        let filmOrSerialName = e.target.value.trim().toLowerCase();
         filmOrSerialName.length >= 1 ? context.showClearButton() : context.hideClearButton();
         if (filmOrSerialName) {
             let nameParam = filmOrSerialName.length <= 3 ? "t" : "s";
             context.timer = setTimeout(function () {
-                filmOrSerialName = filmOrSerialName.split(" ");
-                filmOrSerialName.forEach(elem => {
-                    if (elem) {
-                        if (context.currentTitle) context.currentTitle += "+";
-                        context.currentTitle += elem;
-                    }
-                });
+                context.currentTitle = filmOrSerialName.replace(/\s+/g,"+");
                 console.log(context.currentTitle);
                 context.currentURL = `${context.baseUrl}&${nameParam}=${context.currentTitle}`;
                 console.log(context.currentURL)
@@ -49,7 +43,7 @@ function filmSearch() {
     }
     this.responseBodyProcessing = function (json) {
         console.log(json);
-        let anyFilms = document.querySelector(".any-films");
+        let anyFilms = document.getElementById("any-films");
         if (anyFilms) anyFilms.remove();
         let pagination = document.getElementById("pagination");
         while (pagination.firstChild) pagination.firstChild.remove();
@@ -70,16 +64,14 @@ function filmSearch() {
                 context.movieOutput(json);
             }
         } else {
-            document.querySelector(".total-results").innerHTML = "По данному запросу ничего не было найдено";
+            document.getElementById("total-results").innerHTML = "По данному запросу ничего не было найдено";
         }
     }
     this.showClearButton = function () {
-        document.querySelector(".clear-search-line").classList.add("button_show");
-        document.querySelector(".clear-search-line").classList.remove("button_hide");
+        context.clearSearchLine.classList.remove("button_hide");
     }
     this.hideClearButton = function () {
-        document.querySelector(".clear-search-line").classList.add("button_hide");
-        document.querySelector(".clear-search-line").classList.remove("button_show");
+        context.clearSearchLine.classList.add("button_hide");
     }
     this.clearSearchLine = function () {
         document.getElementById("search-film").value = "";
@@ -89,7 +81,7 @@ function filmSearch() {
         let item = document.createElement("div");
         item.className = "item";
         item.id = film.imdbID;
-        document.querySelector(".any-films").appendChild(item);
+        document.getElementById("any-films").appendChild(item);
 
         let itemName = document.createElement("div");
         itemName.className = "item__name";
@@ -117,10 +109,11 @@ function filmSearch() {
     this.createDivForMovies = function () {
         let anyFilms = document.createElement("div");
         anyFilms.className = "any-films";
+        anyFilms.id = "any-films";
         document.getElementById("blockForFilms").appendChild(anyFilms);
     }
     this.showTotalResults = function (length, totalPages) {
-        document.querySelector(".total-results").innerHTML = `Показано с ${(context.currentPage ? context.currentPage - 1 : 0)*10+1} по 
+        document.getElementById("total-results").innerHTML = `Показано с ${(context.currentPage ? context.currentPage - 1 : 0)*10+1} по 
         ${(context.currentPage ? context.currentPage - 1 : 0)*10+length} результатов из ${totalPages}`;
     }
     this.createPagination = function (page, block, pages) {
@@ -332,6 +325,8 @@ function filmSearch() {
         input.placeholder = "Введите название фильма или сериала";
         let button = document.createElement("button");
         button.className = "clear-search-line button_hide";
+        button.id = "clear-search-line";
+        button.innerHTML = "&times;";
         button.onclick = context.clearSearchLine;
         blockForInput.appendChild(input);
         blockForInput.appendChild(button);
@@ -342,6 +337,7 @@ function filmSearch() {
         blockForFilms.className = "container";
         let totalResults = document.createElement("div");
         totalResults.className = "total-results";
+        totalResults.id = "total-results";
         blockForFilms.appendChild(totalResults);
         document.body.appendChild(blockForFilms);
 
@@ -354,5 +350,6 @@ function filmSearch() {
         document.body.appendChild(blockForPagination);
 
         document.getElementById("search-film").addEventListener("input", context.searchMovieByName);
+        context.clearSearchLine = document.getElementById("clear-search-line");
     }
 }
