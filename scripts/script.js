@@ -1,27 +1,39 @@
 document.addEventListener("DOMContentLoaded", function () {
-    let filmSearchObj = new filmSearch;
+    let filmSearchObj = new FilmSearch;
     filmSearchObj.createBasicMarkup();
 });
 
-function filmSearch() {
+function FilmSearch() {
+    let context = this;
     this.apiKey = '1977b733';
     this.baseUrl = `https://www.omdbapi.com/?apiKey=${this.apiKey}`;
     this.currentURL = "";
-    let context = this;
     this.timer = null;
     this.currentPage = null;
+    this.pagesInMemory = {};
     this.currentTitle = "";
     this.searchMovieByName = function (e) {
-        console.log(context);
-        context.currentTitle = "";
-        context.currentPage = null;
         if (context.timer) clearTimeout(context.timer);
-        let filmOrSerialName = e.target.value.trim().toLowerCase();
+        let filmOrSerialName = e.target.value.trim();
         filmOrSerialName.length >= 1 ? context.showClearButton() : context.hideClearButton();
         if (filmOrSerialName) {
             let nameParam = filmOrSerialName.length <= 3 ? "t" : "s";
-            context.timer = setTimeout(function () {
-                context.currentTitle = filmOrSerialName.replace(/\s+/g,"+");
+            context.timer = setTimeout(() => {
+                context.currentTitle = "";
+                context.currentPage = null;
+                context.pagesInMemory = {};
+                context.currentTitle = filmOrSerialName.toLowerCase().replace(/\s+/g, "+");
+                document.querySelectorAll('.any-films').forEach(item => item.remove());
+                let pagination = document.getElementById('pagination');
+                while (pagination.firstChild) pagination.firstChild.remove();
+
+                //РАбота с history api
+                // let state;
+                // state = {
+                //     page: context.currentTitle
+                // }
+                // history.pushState(state, '', state.page + "/");
+
                 console.log(context.currentTitle);
                 context.currentURL = `${context.baseUrl}&${nameParam}=${context.currentTitle}`;
                 console.log(context.currentURL)
@@ -38,50 +50,48 @@ function filmSearch() {
                     throw new Error(`Ошибка HTTP: ${response.status}`);
                 }
             })
-            .then(context.responseBodyProcessing)
+            .then(context.processBodyResponse)
             .catch(error => console.log(error));
     }
-    this.responseBodyProcessing = function (json) {
+    this.processBodyResponse = function (json) {
         console.log(json);
-        let anyFilms = document.getElementById("any-films");
-        if (anyFilms) anyFilms.remove();
         let pagination = document.getElementById("pagination");
-        while (pagination.firstChild) pagination.firstChild.remove();
-        if (json.Response != "False") {
-            context.currentResult = json;
-            let ul = document.createElement("ul");
-            pagination.appendChild(ul);
-            context.createDivForMovies();
-            if ("Search" in json) {
-                context.showTotalResults(json.Search.length, json.totalResults);
-                context.createPagination(context.currentPage || 1, ul, Math.ceil(json.totalResults / 10));
-                json.Search.forEach(item => {
-                    context.movieOutput(item);
-                });
-            } else {
-                context.showTotalResults(1, 1);
-                context.createPagination(context.currentPage || 1, ul, 1);
-                context.movieOutput(json);
-            }
-        } else {
+        if (json.Response === "False") {
             document.getElementById("total-results").innerHTML = "По данному запросу ничего не было найдено";
+            return;
+        }
+        let ul = document.createElement("ul");
+        ul.id = `pagination-page-${context.currentPage || 1}`;
+        pagination.appendChild(ul);
+        let anyFilms = context.createDivForMovies();
+        console.log(context.pagesInMemory);
+        if ("Search" in json) {
+            context.pagesInMemory[context.currentPage || 1] = context.showTotalResults(json.Search.length, json.totalResults);
+            context.createPagination(context.currentPage || 1, ul, Math.ceil(json.totalResults / 10));
+            json.Search.forEach(item => {
+                context.movieOutput(item, anyFilms);
+            });
+        } else {
+            context.pagesInMemory[context.currentPage || 1] = context.showTotalResults(1, 1);
+            context.createPagination(context.currentPage || 1, ul, 1);
+            context.movieOutput(json, anyFilms);
         }
     }
     this.showClearButton = function () {
-        context.clearSearchLine.classList.remove("button_hide");
+        context.clearSearchLineButton.classList.remove("hidden");
     }
     this.hideClearButton = function () {
-        context.clearSearchLine.classList.add("button_hide");
+        context.clearSearchLineButton.classList.add("hidden");
     }
     this.clearSearchLine = function () {
         document.getElementById("search-film").value = "";
         context.hideClearButton();
     }
-    this.movieOutput = function (film) {
+    this.movieOutput = function (film, anyFilms) {
         let item = document.createElement("div");
         item.className = "item";
         item.id = film.imdbID;
-        document.getElementById("any-films").appendChild(item);
+        anyFilms.appendChild(item);
 
         let itemName = document.createElement("div");
         itemName.className = "item__name";
@@ -103,18 +113,21 @@ function filmSearch() {
         let itemButton = document.createElement("button");
         itemButton.className = "item__button";
         itemButton.innerHTML = "Узнать больше";
+        itemButton.dataset.filmId = film.imdbID;
         itemButton.onclick = context.getMovieID;
         itemDescription.appendChild(itemButton);
     }
     this.createDivForMovies = function () {
         let anyFilms = document.createElement("div");
         anyFilms.className = "any-films";
-        anyFilms.id = "any-films";
+        anyFilms.id = `any-films-${context.currentPage || 1}`;
         document.getElementById("blockForFilms").appendChild(anyFilms);
+        return anyFilms;
     }
     this.showTotalResults = function (length, totalPages) {
-        document.getElementById("total-results").innerHTML = `Показано с ${(context.currentPage ? context.currentPage - 1 : 0)*10+1} по 
-        ${(context.currentPage ? context.currentPage - 1 : 0)*10+length} результатов из ${totalPages}`;
+        const totalResultsText = `Показано с ${(context.currentPage ? context.currentPage - 1 : 0)*10+1} по ${(context.currentPage ? context.currentPage - 1 : 0)*10+length} результатов из ${totalPages}`;
+        document.getElementById("total-results").innerHTML = totalResultsText;
+        return totalResultsText;
     }
     this.createPagination = function (page, block, pages) {
         console.log(pages);
@@ -123,6 +136,7 @@ function filmSearch() {
         if ((page) != 1) {
             let a = document.createElement("a");
             a.innerHTML = "1";
+            a.dataset.page = 1;
             a.onclick = context.newPageMovie;
             let li = document.createElement("li");
             li.appendChild(a);
@@ -162,6 +176,7 @@ function filmSearch() {
         for (let i = pagebeg; i < page; i++) {
             let a = document.createElement("a");
             a.innerHTML = i;
+            a.dataset.page = i;
             a.onclick = context.newPageMovie;
             let li = document.createElement("li");
             li.appendChild(a);
@@ -178,6 +193,7 @@ function filmSearch() {
         for (let i = page + 1; i <= pageend; i++) {
             let a = document.createElement("a");
             a.innerHTML = i;
+            a.dataset.page = i;
             a.onclick = context.newPageMovie;
             let li = document.createElement("li");
             li.appendChild(a);
@@ -195,6 +211,7 @@ function filmSearch() {
         if (page != pages) {
             let a = document.createElement("a");
             a.innerHTML = pages;
+            a.dataset.page = pages;
             a.onclick = context.newPageMovie;
             let li = document.createElement("li");
             li.appendChild(a);
@@ -204,16 +221,30 @@ function filmSearch() {
     this.newPageMovie = function () {
         window.scrollTo(0, 0);
         console.log(context);
-        context.currentPage = parseInt(this.innerHTML);
-        if (context.currentPage == 1 || !context.currentPage)
-            context.currentPage = null;
-        let pageParam = context.currentPage ? `&page=${context.currentPage}` : "";
-        let URL = `${context.currentURL}${pageParam}`;
-        console.log(URL);
-        context.getResultsFromServer(URL);
+        document.getElementById(`any-films-${context.currentPage || 1}`).classList.add("hidden");
+        document.getElementById(`pagination-page-${context.currentPage || 1}`).classList.add("hidden");
+        context.currentPage = parseInt(this.dataset.page);
+        if (context.currentPage == 1 || !context.currentPage) context.currentPage = null;
+        if (context.pagesInMemory[context.currentPage || 1]) {
+            document.getElementById("total-results").innerHTML = context.pagesInMemory[context.currentPage || 1];
+            document.getElementById(`any-films-${context.currentPage || 1}`).classList.remove("hidden");
+            document.getElementById(`pagination-page-${context.currentPage || 1}`).classList.remove("hidden");
+        } else {
+            let pageParam = context.currentPage ? `&page=${context.currentPage}` : "";
+            let URL = `${context.currentURL}${pageParam}`;
+            console.log(URL);
+            context.getResultsFromServer(URL);
+        }
+        //Работа с history api
+        // let state;
+        // state = {
+        //     page: context.currentPage || 1,
+        //     name: context.currentTitle
+        // }
+        // history.pushState(state, '', `${state.page}`);
     }
     this.getMovieID = function () {
-        let id = this.parentNode.parentNode.id;
+        let id = this.dataset.filmId;
         console.log(id);
         let URL = `${context.baseUrl}&i=${id}`;
         fetch(URL)
@@ -228,72 +259,25 @@ function filmSearch() {
             .catch(error => console.log(error));
     }
     this.viewInfoAboutFilm = function (obj) {
-        while (document.body.firstChild) document.body.firstChild.remove();
+        document.getElementById("main").classList.add("hidden");
 
-        let containerForButton = document.createElement("div");
-        containerForButton.className = "container";
-        document.body.appendChild(containerForButton);
+        let currentFilm = document.getElementById('current-film');
+        currentFilm.classList.remove('hidden');
 
-        let header = document.createElement("div");
-        header.className = "header";
-        containerForButton.appendChild(header);
-
-        let home = document.createElement("a");
-        home.innerHTML = "Home";
-        home.onclick = context.backToMovieList;
-        header.appendChild(home);
-
-        let category = document.createElement("span");
-        category.innerHTML = ` / ${obj.Type}`;
-        header.appendChild(category);
-
-        let container = document.createElement("div");
-        container.className = "container";
-        document.body.appendChild(container);
-
-        let film = document.createElement("div");
-        film.className = "film";
-        container.appendChild(film);
-
-        let poster = document.createElement("div");
-        poster.className = "film__poster";
-        film.appendChild(poster);
-
+        currentFilm.querySelector(".header").lastElementChild.innerHTML = ` / ${obj.Type}`;
         if (obj.Poster != "N/A") {
             let image = document.createElement("img");
             image.className = "poster__image";
             image.setAttribute('src', obj.Poster);
-            poster.appendChild(image);
+            currentFilm.querySelector(".film__poster").innerHTML = "";
+            currentFilm.querySelector(".film__poster").appendChild(image);
         }
-
-        let filmInfo = document.createElement("div");
-        filmInfo.className = "film__info";
-        film.appendChild(filmInfo);
-
-        let filmRate = document.createElement("span");
-        filmRate.className = "film__rate";
-        filmRate.innerHTML = obj.imdbRating;
-        filmInfo.appendChild(filmRate);
-
-        let filmName = document.createElement("span");
-        filmName.className = "film__name";
-        filmName.innerHTML = obj.Title;
-        filmInfo.appendChild(filmName);
-
-        let yearFilm = document.createElement("span");
-        yearFilm.className = "film__year";
-        yearFilm.innerHTML = `${obj.Country}, ${obj.Year}`;
-        filmInfo.appendChild(yearFilm);
-
-        let filmGenre = document.createElement("span");
-        filmGenre.className = "film__genre";
-        filmGenre.innerHTML = obj.Genre;
-        filmInfo.appendChild(filmGenre);
-
-        let filmActors = document.createElement("div");
-        filmActors.className = "film__actors";
-        filmInfo.appendChild(filmActors);
-
+        document.querySelector(".film__rate").innerHTML = obj.imdbRating;
+        document.querySelector(".film__name").innerHTML = obj.Title;
+        document.querySelector(".film__year").innerHTML = `${obj.Country}, ${obj.Year}`;
+        document.querySelector(".film__genre").innerHTML = obj.Genre;
+        let filmActors = document.querySelector(".film__actors");
+        filmActors.innerHTML = "";
         let mainActors = obj.Actors.split(",");
         mainActors.forEach(item => {
             let actor = document.createElement("span");
@@ -301,55 +285,29 @@ function filmSearch() {
             actor.innerHTML = item.trim();
             filmActors.appendChild(actor);
         });
-
-        let filmDescription = document.createElement("div");
-        filmDescription.className = "film__description";
-        filmDescription.innerHTML = obj.Plot != "N/A" ? obj.Plot : "Описание данного фильма отсутствует";
-        filmInfo.appendChild(filmDescription);
+        document.querySelector(".film__description").innerHTML = obj.Plot != "N/A" ? obj.Plot : "Описание данного фильма отсутствует";
     }
     this.backToMovieList = function () {
-        context.createBasicMarkup();
-        context.responseBodyProcessing(context.currentResult);
-        document.getElementById("search-film").value = context.currentTitle;
-        context.showClearButton();
+        document.getElementById("main").classList.remove("hidden");
+        document.getElementById("current-film").classList.add("hidden");
     }
     this.createBasicMarkup = function () {
-        while (document.body.firstChild) document.body.firstChild.remove();
-
-        let blockForInput = document.createElement("div");
-        blockForInput.className = "container";
-        let input = document.createElement("input");
-        input.type = "text";
-        input.name = "search-film";
-        input.id = "search-film";
-        input.placeholder = "Введите название фильма или сериала";
-        let button = document.createElement("button");
-        button.className = "clear-search-line button_hide";
-        button.id = "clear-search-line";
-        button.innerHTML = "&times;";
-        button.onclick = context.clearSearchLine;
-        blockForInput.appendChild(input);
-        blockForInput.appendChild(button);
-        document.body.appendChild(blockForInput);
-
-        let blockForFilms = document.createElement("div");
-        blockForFilms.id = "blockForFilms";
-        blockForFilms.className = "container";
-        let totalResults = document.createElement("div");
-        totalResults.className = "total-results";
-        totalResults.id = "total-results";
-        blockForFilms.appendChild(totalResults);
-        document.body.appendChild(blockForFilms);
-
-        let blockForPagination = document.createElement("div");
-        blockForPagination.className = "container";
-        let pagination = document.createElement("div");
-        pagination.id = "pagination";
-        pagination.className = "pagination";
-        blockForPagination.appendChild(pagination);
-        document.body.appendChild(blockForPagination);
-
+        console.clear();
+        context.clearSearchLineButton = document.getElementById("clear-search-line");
+        document.getElementById("clear-search-line").onclick = context.clearSearchLine;
+        document.getElementById("go-back").onclick = context.backToMovieList;
         document.getElementById("search-film").addEventListener("input", context.searchMovieByName);
-        context.clearSearchLine = document.getElementById("clear-search-line");
+        document.getElementById("search-film").addEventListener("focus", event => {
+            event.target.classList.add("search-film_shadow");
+        });
+        document.getElementById("search-film").addEventListener("blur", event => {
+            event.target.classList.remove("search-film_shadow");
+        });
+        // window.addEventListener('popstate', e => {
+        //     console.log(e)
+        // });
+        // window.addEventListener('hashchange', (e) => {
+        //     console.log(1 + location.hash);
+        // });
     }
 }

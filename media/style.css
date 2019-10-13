@@ -3,13 +3,17 @@ body {
     color: rgb(77, 75, 75);
     font-family: 'Open Sans', sans-serif;
 }
-#search-film {
+.search-film {
     width: 100%;
     box-sizing: border-box;
     padding: 10px 37px 10px 10px;
     font-size: 15px;
     /* border: none; */
     font-family: 'Open Sans', sans-serif;
+}
+
+.search-film_shadow {
+    box-shadow: 0 0 5px 2px rgb(78, 127, 218);
 }
 
 .container {
@@ -35,7 +39,7 @@ body {
     cursor: pointer;
 }
 
-.button_hide {
+.hidden {
     display: none;
 }
 
